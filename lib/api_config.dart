@@ -1,6 +1,6 @@
 class ApiConfig {
   // 1. سرور کا مین ایڈریس (کل کو بدلنا ہو تو صرف یہاں بدلیں)
-  static const String baseUrl = "https://www.paxochat.com";
+  static const String baseUrl = "paxochat.com";
 
   // 2. سیکیورٹی کی (جو Node.js بیک اینڈ میں ہے)
   static const String apiSecretKey = "PixoChat_Master_Secure_2026";
