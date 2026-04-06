@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/services.dart'; // ان پٹ فارمیٹ کے لیے
+
+// ان مرکزی فائلوں کو امپورٹ کریں
+import 'config.dart';
 import 'api_service.dart';
-import 'otp_verification.dart';
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -11,137 +14,186 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
-  String? _errorMessage;
 
-  // ریڈ ایرر پاپ اپ کا فنکشن (3 سیکنڈ کے لیے)
-  void _showError(String message) {
-    setState(() { _errorMessage = message; });
-    Timer(Duration(seconds: 3), () {
-      if (mounted) setState(() { _errorMessage = null; });
-    });
-  }
-
-  void _sendOTP() async {
-    final phone = _phoneController.text.trim();
-    if (phone.length != 11) {
-      _showError("نمبر 11 ہندسوں کا ہونا ضروری ہے۔");
+  // موبائل نمبر بھیجنے کا فنکشن (جو آپ کے auth.js بیک اینڈ سے جڑے گا)
+  Future<void> sendOtp() async {
+    // بنیادی تصدیق (Validation)
+    if (_phoneController.text.length != 11) {
+      _showSnackBar("براہ کرم 11 ہندسوں کا درست نمبر درج کریں", Colors.red);
       return;
     }
 
-    setState(() => _isLoading = true);
+    // لوڈنگ شروع کریں اور ڈیزائن اپ ڈیٹ کریں
+    setState(() {
+      _isLoading = true;
+    });
+
+    // بیک اینڈ کے لیے ڈیٹا تیار کریں
+    final requestBody = {
+      "mobile": _phoneController.text // 'mobile' کی آپ کے بیک اینڈ کے مطابق ہے
+    };
 
     try {
-      final response = await ApiService.postRequest('auth', {
-        'mobile': phone,
-      });
+      // مرکزی اے پی آئی سروس کا استعمال کرتے ہوئے بیک اینڈ کال کریں
+      final response = await ApiService.postRequest(
+        AppConfig.auth, // '/auth' اینڈ پوائنٹ
+        requestBody
+      );
 
-      setState(() => _isLoading = false);
-
-      // اگر بیک اینڈ سے کامیابی کا پیغام آئے
       if (response['status'] == 'success') {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OTPVerificationScreen(mobile: phone),
-          ),
-        );
+        // کامیابی کا پیغام
+        _showSnackBar(response['message'] ?? "او ٹی پی بھیج دیا گیا ہے", Colors.green);
+        
+        // یہاں پر آپ اگلی OTP والی اسکرین پر جانے کے لیے نیویگیشن لکھیں گے
+        // مثال کے طور پر:
+        // Navigator.push(context, MaterialPageRoute(builder: (context) => OtpVerifyScreen(phone: _phoneController.text)));
       } else {
-        _showError(response['message'] ?? "سرور سے رابطہ نہیں ہو سکا۔");
+        // بیک اینڈ سے آنے والا ایرر میسج دکھائیں
+        _showSnackBar(response['message'] ?? "خرابی پیش آگئی", Colors.red);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showError("کنکشن کا مسئلہ: براہ کرم انٹرنیٹ چیک کریں۔");
+      _showSnackBar("نیٹ ورک یا سرور کا مسئلہ: $e", Colors.red);
+    } finally {
+      // لوڈنگ ختم کریں چاہے کامیابی ہو یا خرابی
+      setState(() {
+        _isLoading = false;
+      });
     }
+  }
+
+  // میسج دکھانے کے لیے ایک مددگار فنکشن
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // بیک گراؤنڈ گریڈینٹ
       body: Container(
         width: double.infinity,
-        height: double.infinity,
         decoration: BoxDecoration(
-          // بالکل وہی بیک گراؤنڈ جو تصویر میں ہے
           gradient: LinearGradient(
-            colors: [Color(0xFFE5F8ED), Color(0xFFFCFBE1)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFD4EAE2), // ہلکا ہرا رنگ
+              Color(0xFFFAFBEC), // ہلکا پیلا رنگ
+            ],
           ),
         ),
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 25.0),
+            child: SingleChildScrollView( // اسکرین چھوٹی ہونے پر سکولنگ کے لیے
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.88,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                padding: EdgeInsets.all(25),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(25),
+                  // ہلکا سایہ (Drop Shadow)
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: Offset(0, 10))
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 15,
+                      offset: Offset(0, 10),
+                    )
                   ],
                 ),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min, // کنٹینر کو صرف ضرورت جتنا بڑا رکھنا
                   children: [
-                    Text("👋 Welcome!", style: TextStyle(color: Color(0xFF4A55A2), fontSize: 24, fontWeight: FontWeight.bold)),
+                    // ویلکم لائن (تصویر کے مطابق)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("👋 ", style: TextStyle(fontSize: 24)),
+                        Text(
+                          "Welcome!",
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF3F51B5), // نیلا رنگ
+                          ),
+                        ),
+                      ],
+                    ),
                     SizedBox(height: 10),
-                    Text("Enter your 11-digit mobile number to proceed.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                    SizedBox(height: 30),
-                    TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        hintText: "e.g., 03XXXXXXXXX",
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey[300]!)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Color(0xFF00C853), width: 2)),
+                    Text(
+                      "Enter your 11-digit mobile number to proceed.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
                       ),
                     ),
                     SizedBox(height: 25),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _sendOTP,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF00C853), // گرین بٹن
-                        minimumSize: Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        elevation: 5,
-                        shadowColor: Color(0xFF00C853).withOpacity(0.4),
+                    
+                    // موبائل نمبر کا ان پٹ فیلڈ
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(11), // صرف 11 ہندسے
+                        FilteringTextInputFormatter.digitsOnly, // صرف ہندسے
+                      ],
+                      decoration: InputDecoration(
+                        hintText: "e.g., 03XXXXXXXXX",
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        counterText: "", // نیچے کاؤنٹر ہٹا دیں
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Color(0xFF3F51B5)),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
                       ),
-                      child: _isLoading 
-                        ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text("Continue", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(height: 25),
+                    
+                    // کنٹینیو بٹن یا لوڈنگ انڈیکیٹر
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : sendOtp, // لوڈنگ کے دوران بٹن بند
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF00C853), // سبز رنگ
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? CircularProgressIndicator(color: Colors.white)
+                            : Text(
+                                "Continue",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            
-            // مخصوص ریڈ ایرر پاپ اپ (اگر ایرر ہو)
-            if (_errorMessage != null)
-              Positioned(
-                top: 60, left: 30, right: 30,
-                child: Container(
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red, width: 2),
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: Colors.red),
-                      SizedBox(width: 10),
-                      Expanded(child: Text(_errorMessage!, style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14))),
-                    ],
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
