@@ -1,0 +1,39 @@
+name: Build Flutter APK
+
+on:
+  push:
+    branches:
+      - main # اگر آپ کی برانچ کا نام master ہے تو یہاں master لکھیں
+  workflow_dispatch: # یہ بٹن دے گا تاکہ آپ خود بھی بلڈ چلا سکیں
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0' # یا جو ورژن آپ استعمال کر رہے ہیں
+          channel: 'stable'
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --debug # ٹیسٹنگ کے لیے ڈیبگ اے پی کے تیز بنتی ہے
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
