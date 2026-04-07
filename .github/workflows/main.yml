@@ -1,0 +1,66 @@
+name: Build Web and APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # اس سے آپ مینوئلی بھی رن کر سکیں گے
+
+permissions:
+  pages: write
+  id-token: write
+  contents: write # آرٹ فیکٹ سیو کرنے کے لیے ضروری ہے
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 1. ویب کے لیے بلڈ (آپ کا پرانا سٹیپ)
+      - name: Build Web
+        run: flutter build web --pwa-strategy=none --base-href "/Premium-chat/"
+
+      # 2. موبائل کے لیے APK بلڈ (ٹیسٹنگ کے لیے)
+      - name: Build APK
+        run: flutter build apk --debug
+
+      # 3. ویب کے لیے آرٹ فیکٹ اپلوڈ کریں
+      - name: Upload Web Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      # 4. موبائل APK کو علیحدہ سے اپلوڈ کریں (تاکہ آپ ڈاؤن لوڈ کر سکیں)
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
