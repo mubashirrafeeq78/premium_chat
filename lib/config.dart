@@ -1,6 +1,9 @@
 class AppConfig {
-  // اپنا سرور یو آر ایل یہاں لکھیں (آخر میں سلیش نہ لگائیں)
-  static const String baseUrl = "https://paxochat.com"; 
+  // یہ لائن براؤزر کی سیکیورٹی (CORS) کو بائی پاس کرنے کے لیے ہے
+  static const String _proxy = "https://corsproxy.io/?"; 
+
+  // آپ کا اصل سرور یو آر ایل (پروکسی کے ساتھ جوڑ دیا گیا ہے)
+  static const String baseUrl = "${_proxy}https://paxochat.com"; 
 
   // آپ کی مخصوص سیکیورٹی کی
   static const String apiKey = "PixoChat_Master_Secure_2026";
