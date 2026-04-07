@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'config.dart';
 import 'api_service.dart';
-// اپنی او ٹی پی فائل کا درست نام یہاں لکھیں
-import 'otp_verification.dart'; 
+import 'otp_verification.dart'; // اس فائل کا نام یقینی بنائیں
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -15,23 +14,26 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
 
   Future<void> sendOtp() async {
-    if (_phoneController.text.length < 10) {
-      _showStatusMessage("Please enter a valid phone number", isError: true);
+    // 1. بیک اینڈ کی ضرورت کے مطابق 11 ہندسوں کی تصدیق
+    if (_phoneController.text.length != 11) {
+      _showStatusMessage("Please enter a valid 11-digit number", isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
+      // 2. آپ کے auth.js کے مطابق 'mobile' کی ورڈ کے ساتھ ڈیٹا بھیجنا
       final response = await ApiService.postRequest(
         AppConfig.auth, 
         {"mobile": _phoneController.text}
       );
 
+      // 3. بیک اینڈ کے 'status' چیک کرنا
       if (response['status'] == 'success') {
         _showStatusMessage("Verification code sent successfully!", isError: false);
         
-        // یوزر کو او ٹی پی اسکرین پر بھیجنا (2 سیکنڈ کے وقفے کے بعد)
+        // کامیابی کی صورت میں 2 سیکنڈ بعد منتقلی
         Future.delayed(Duration(seconds: 2), () {
           if (mounted) {
             Navigator.push(
@@ -43,15 +45,18 @@ class _AuthScreenState extends State<AuthScreen> {
           }
         });
       } else {
-        _showStatusMessage(response['message'] ?? "Authentication failed. Please try again.", isError: true);
+        // بیک اینڈ سے آنے والا ایرر میسج دکھانا
+        _showStatusMessage(response['message'] ?? "Failed to send code.", isError: true);
       }
     } catch (e) {
-      _showStatusMessage("Connection error. Please check your internet.", isError: true);
+      // سیکیورٹی کے لیے عام ایرر میسج
+      _showStatusMessage("System busy. Please try again later.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // میسج دکھانے کا خوبصورت فنکشن (پہلے والا ڈیزائن)
   void _showStatusMessage(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).clearSnackBars(); 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -156,11 +161,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(15),
+                      LengthLimitingTextInputFormatter(11), // 11 ہندسوں کی حد
                     ],
                     decoration: InputDecoration(
                       labelText: "Mobile Number",
-                      hintText: "Enter with country code",
+                      hintText: "03XXXXXXXXX",
                       prefixIcon: Icon(Icons.phone_android_rounded, color: Color(0xFF3F51B5)),
                       filled: true,
                       fillColor: Colors.grey[50],
