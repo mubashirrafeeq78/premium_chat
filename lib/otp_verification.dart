@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'api_service.dart';
 import 'config.dart';
-import 'security_getway.dart'; // سیکیورٹی گیٹ وے فائل امپورٹ کریں
+import 'security_getway.dart'; // سیکیورٹی گیٹ وے فائل
+import 'profile_setup.dart'; // پروفائل سیٹ اپ فائل
 
 class OTPVerificationScreen extends StatefulWidget {
   final String mobile;
@@ -95,15 +96,27 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       });
 
       if (response['status'] == 'success') {
-        _showStatus("Identity Verified!", isError: false);
+        _showStatus("OTP Verified Successfully!", isError: false);
         
-        // کامیابی پر سیکیورٹی گیٹ وے کی طرف منتقلی
-        Future.delayed(Duration(seconds: 2), () {
-          if (mounted) {
+        Future.delayed(Duration(seconds: 1), () {
+          if (!mounted) return;
+
+          // یہاں بیک اینڈ کے 'user_exists' ویری ایبل کی بنیاد پر فیصلہ ہوگا
+          if (response['user_exists'] == true) {
+            // اگر یوزر پہلے سے موجود ہے تو سیکیورٹی گیٹ وے پر بھیجیں
             Navigator.pushAndRemoveUntil(
               context, 
               MaterialPageRoute(
                 builder: (context) => SecurityGatewayScreen(uuid: response['uuid'] ?? "")
+              ),
+              (route) => false,
+            );
+          } else {
+            // اگر یوزر نیا ہے تو پروفائل سیٹ اپ پر بھیجیں
+            Navigator.pushAndRemoveUntil(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => ProfileSetupScreen(mobile: widget.mobile)
               ),
               (route) => false,
             );
@@ -165,7 +178,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   Text("We've sent a code to\n${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[400], fontSize: 14)),
                   SizedBox(height: 35),
                   
-                  // OTP Box Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (index) => _buildOtpBox(index, containerWidth)),
@@ -231,4 +243,4 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       ),
     );
   }
-} // یہاں بریکٹ بند نہیں تھا جو اب ٹھیک کر دیا گیا ہے۔
+}
