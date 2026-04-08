@@ -231,3 +231,4 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       ),
     );
   }
+} // یہاں بریکٹ بند نہیں تھا جو اب ٹھیک کر دیا گیا ہے۔
