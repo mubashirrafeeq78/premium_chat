@@ -179,7 +179,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
 
                   SizedBox(height: 25),
-                  Text("SET 5-DIGIT SECURITY PIN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.black, color: Colors.grey)),
+                  Text("SET 5-DIGIT SECURITY PIN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey)),
                   SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
