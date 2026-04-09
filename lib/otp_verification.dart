@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'api_service.dart';
 import 'config.dart';
-import 'security_getway.dart'; // سیکیورٹی گیٹ وے فائل
-import 'profile_setup.dart'; // پروفائل سیٹ اپ فائل
+import 'security_getway.dart'; 
+import 'profile_setup.dart'; 
 
 class OTPVerificationScreen extends StatefulWidget {
   final String mobile;
@@ -90,7 +90,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.postRequest(AppConfig.verifyOtp, {
+      // یہاں تبدیلی کی گئی ہے: براہ راست اینڈ پوائنٹ کا نام استعمال کیا گیا ہے
+      final response = await ApiService.postRequest('/verify-otp', {
         'mobile': widget.mobile,
         'otp': otp,
       });
@@ -101,9 +102,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         Future.delayed(Duration(seconds: 1), () {
           if (!mounted) return;
 
-          // یہاں بیک اینڈ کے 'user_exists' ویری ایبل کی بنیاد پر فیصلہ ہوگا
           if (response['user_exists'] == true) {
-            // اگر یوزر پہلے سے موجود ہے تو سیکیورٹی گیٹ وے پر بھیجیں
             Navigator.pushAndRemoveUntil(
               context, 
               MaterialPageRoute(
@@ -112,7 +111,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               (route) => false,
             );
           } else {
-            // اگر یوزر نیا ہے تو پروفائل سیٹ اپ پر بھیجیں
             Navigator.pushAndRemoveUntil(
               context, 
               MaterialPageRoute(
