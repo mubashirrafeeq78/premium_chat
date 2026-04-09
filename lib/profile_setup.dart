@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart'; // image_picker package lazmi add karein
 import 'api_service.dart';
-import 'config.dart';
 import 'security_getway.dart';
-
-// ================= BACKEND ENDPOINT =================
-const String backendApiFile = '/register-new-user';
-// ====================================================
 
 class ProfileSetupScreen extends StatefulWidget {
   final String mobile;
@@ -20,207 +15,190 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final List<TextEditingController> _pinControllers = List.generate(5, (index) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(5, (index) => FocusNode());
-
-  String? _selectedRole;
-  File? _profilePic, _cnicFront, _cnicBack, _liveSelfie;
+  final _nameController = TextEditingController();
+  final _pinController = TextEditingController();
+  
+  String _selectedRole = 'buyer'; // Default Role
+  File? _profilePic, _cnicFront, _cnicBack, _selfie;
   bool _isLoading = false;
+
   final ImagePicker _picker = ImagePicker();
 
+  // تصویر منتخب کرنے کا فنکشن
   Future<void> _pickImage(String type) async {
-    ImageSource source = (type == 'pfp') ? ImageSource.gallery : ImageSource.camera;
-    
-    final XFile? image = await _picker.pickImage(
-      source: source,
-      imageQuality: 40,
-    );
-
-    if (image != null) {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+    if (pickedFile != null) {
       setState(() {
-        if (type == 'pfp') _profilePic = File(image.path);
-        if (type == 'front') _cnicFront = File(image.path);
-        if (type == 'back') _cnicBack = File(image.path);
-        if (type == 'selfie') _liveSelfie = File(image.path);
+        if (type == 'pfp') _profilePic = File(pickedFile.path);
+        if (type == 'front') _cnicFront = File(pickedFile.path);
+        if (type == 'back') _cnicBack = File(pickedFile.path);
+        if (type == 'selfie') _selfie = File(pickedFile.path);
       });
     }
   }
 
-  Future<String?> _toBase64(File? file) async {
+  // تصویر کو Base64 میں تبدیل کرنے کا فنکشن (بیک اینڈ کی ضرورت کے مطابق)
+  String? _fileToBase64(File? file) {
     if (file == null) return null;
-    return "data:image/jpeg;base64,${base64Encode(await file.readAsBytes())}";
+    List<int> imageBytes = file.readAsBytesSync();
+    return "data:image/jpeg;base64," + base64Encode(imageBytes);
   }
 
-  bool _isFormValid() {
-    bool baseValid = _nameController.text.length > 2 && _profilePic != null &&
-        _selectedRole != null && _pinControllers.every((c) => c.text.isNotEmpty);
-    if (_selectedRole == 'provider') {
-      return baseValid && _cnicFront != null && _cnicBack != null && _liveSelfie != null;
+  Future<void> _registerUser() async {
+    // بنیادی ویلیڈیشن
+    if (_nameController.text.isEmpty || _pinController.text.length < 4 || _profilePic == null) {
+      _showSnack("Please fill basic info and select profile picture", true);
+      return;
     }
-    return baseValid;
-  }
 
-  Future<void> _handleRegister() async {
+    if (_selectedRole == 'provider' && (_cnicFront == null || _cnicBack == null || _selfie == null)) {
+      _showSnack("Providers must upload CNIC and Selfie", true);
+      return;
+    }
+
     setState(() => _isLoading = true);
-    String pin = _pinControllers.map((e) => e.text).join();
+
+    // تصاویر کا ڈیٹا تیار کرنا
+    Map<String, String?> imagesData = {
+      "profile_pic": _fileToBase64(_profilePic),
+      "cnic_front": _fileToBase64(_cnicFront),
+      "cnic_back": _fileToBase64(_cnicBack),
+      "live_selfie": _fileToBase64(_selfie),
+    };
 
     try {
-      Map<String, String?> imagesMap = {
-        'profile_pic': await _toBase64(_profilePic),
-        'cnic_front': await _toBase64(_cnicFront),
-        'cnic_back': await _toBase64(_cnicBack),
-        'live_selfie': await _toBase64(_liveSelfie),
-      };
-
-      // یہاں 'backendApiFile' کا استعمال کیا گیا ہے جو سب سے اوپر ڈیفائن ہے
-      final response = await ApiService.postRequest(backendApiFile, {
-        'mobile_number': widget.mobile,
-        'full_name': _nameController.text.trim(),
-        'role': _selectedRole,
-        'pin': pin,
-        'images': jsonEncode(imagesMap),
+      final response = await ApiService.postRequest('/register-new-user', {
+        "mobile_number": widget.mobile,
+        "full_name": _nameController.text.trim(),
+        "role": _selectedRole,
+        "pin": _pinController.text,
+        "images": jsonEncode(imagesData),
       });
 
       if (response['status'] == 'success') {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_uuid', response['uuid']);
-        await prefs.setString('user_role', _selectedRole!);
-        
+        _showSnack("Registration Successful!", false);
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => SecurityGatewayScreen(uuid: response['uuid'])),
           (route) => false,
         );
       } else {
-        _showError(response['message']);
+        _showSnack(response['message'] ?? "Registration Failed", true);
       }
     } catch (e) {
-      _showError("سرور سے رابطہ نہیں ہو سکا۔");
+      _showSnack("Error: $e", true);
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+  void _showSnack(String msg, bool isError) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: isError ? Colors.red : Colors.green,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFE3FDF5), Color(0xFFFFE6FA)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(25),
-            child: Container(
-              padding: EdgeInsets.all(25),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 50)]),
-              child: Column(
-                children: [
-                  Text("Profile Setup", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF3B4CA8))),
-                  SizedBox(height: 20),
-                  
-                  GestureDetector(
-                    onTap: () => _pickImage('pfp'),
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 55, backgroundColor: Colors.grey[100],
-                          backgroundImage: _profilePic != null ? FileImage(_profilePic!) : null,
-                          child: _profilePic == null ? Icon(Icons.person, size: 50, color: Color(0xFF3B4CA8)) : null,
-                        ),
-                        Positioned(bottom: 0, right: 0, child: CircleAvatar(radius: 18, backgroundColor: Color(0xFF3B4CA8), child: Icon(Icons.camera_alt, size: 16, color: Colors.white))),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 25),
-                  TextField(controller: _nameController, textAlign: TextAlign.center, onChanged: (_) => setState(() {}), decoration: InputDecoration(hintText: "Your Full Name", filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none))),
-
-                  SizedBox(height: 25),
-                  Text("SET 5-DIGIT SECURITY PIN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey)),
-                  SizedBox(height: 10),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(5, (index) => _buildPinBox(index))),
-
-                  SizedBox(height: 30),
-                  Row(children: [_roleBtn("🛠️", "Provider", "provider"), SizedBox(width: 15), _roleBtn("🤝", "Buyer", "buyer")]),
-
-                  if (_selectedRole == 'provider') ...[
-                    SizedBox(height: 25),
-                    _uploadBox("CNIC FRONT (Live Camera)", _cnicFront, () => _pickImage('front')),
-                    _uploadBox("CNIC BACK (Live Camera)", _cnicBack, () => _pickImage('back')),
-                    _uploadBox("LIVE SELFIE", _liveSelfie, () => _pickImage('selfie')),
-                  ],
-
-                  SizedBox(height: 30),
-                  SizedBox(
-                    width: double.infinity, height: 60,
-                    child: ElevatedButton(
-                      onPressed: (_isFormValid() && !_isLoading) ? _handleRegister : null,
-                      style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF3B4CA8), disabledBackgroundColor: Colors.grey[200], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25))),
-                      child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text("GO TO APPLICATION", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
-                  )
-                ],
+      appBar: AppBar(title: Text("Complete Your Profile"), backgroundColor: Color(0xFF3F51B5), foregroundColor: Colors.white),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // پروفائل پکچر سیکشن
+            GestureDetector(
+              onTap: () => _pickImage('pfp'),
+              child: CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: _profilePic != null ? FileImage(_profilePic!) : null,
+                child: _profilePic == null ? Icon(Icons.camera_alt, size: 40, color: Colors.grey) : null,
               ),
             ),
-          ),
+            SizedBox(height: 20),
+            
+            // ان پٹ فیلڈز
+            _buildTextField(_nameController, "Full Name", Icons.person),
+            SizedBox(height: 15),
+            _buildTextField(_pinController, "Security PIN (4-Digits)", Icons.lock, isPin: true),
+            
+            SizedBox(height: 25),
+            Text("Select Your Role", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Row(
+              children: [
+                Expanded(child: _roleCard("buyer", "Buyer", Icons.shopping_bag)),
+                SizedBox(width: 10),
+                Expanded(child: _roleCard("provider", "Provider", Icons.engineering)),
+              ],
+            ),
+
+            // اگر رول پرووائیڈر ہو تو اضافی تصاویر
+            if (_selectedRole == 'provider') ...[
+              SizedBox(height: 25),
+              Text("Identity Verification (Required for Providers)"),
+              _uploadTile("CNIC Front Side", _cnicFront, () => _pickImage('front')),
+              _uploadTile("CNIC Back Side", _cnicBack, () => _pickImage('back')),
+              _uploadTile("Live Selfie", _selfie, () => _pickImage('selfie')),
+            ],
+
+            SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _registerUser,
+                style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF00C853), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text("FINISH REGISTRATION", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            )
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildPinBox(int index) {
-    return SizedBox(
-      width: 45,
-      child: TextField(
-        controller: _pinControllers[index], focusNode: _focusNodes[index], obscureText: true, textAlign: TextAlign.center, keyboardType: TextInputType.number, maxLength: 1,
-        decoration: InputDecoration(counterText: "", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-        onChanged: (v) {
-          if (v.isNotEmpty && index < 4) _focusNodes[index + 1].requestFocus();
-          if (v.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
-          setState(() {});
-        },
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isPin = false}) {
+    return TextField(
+      controller: controller,
+      keyboardType: isPin ? TextInputType.number : TextInputType.text,
+      obscureText: isPin,
+      maxLength: isPin ? 4 : null,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Color(0xFF3F51B5)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  Widget _roleBtn(String emoji, String label, String r) {
-    bool isActive = _selectedRole == r;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedRole = r),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 15),
-          decoration: BoxDecoration(color: isActive ? Color(0xFFF0F4FF) : Colors.grey[50], borderRadius: BorderRadius.circular(20), border: Border.all(color: isActive ? Color(0xFF3B4CA8) : Colors.transparent, width: 2)),
-          child: Column(children: [Text(emoji, style: TextStyle(fontSize: 24)), Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[600]))]),
-        ),
-      ),
-    );
-  }
-
-  Widget _uploadBox(String label, File? file, VoidCallback onTap) {
+  Widget _roleCard(String role, String label, IconData icon) {
+    bool isSelected = _selectedRole == role;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => setState(() => _selectedRole = role),
       child: Container(
-        margin: EdgeInsets.only(bottom: 15),
-        height: 120, width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
-          color: Colors.grey[50], borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: file != null ? Color(0xFF3B4CA8) : Colors.grey[300]!, width: 2),
-          image: file != null ? DecorationImage(image: FileImage(file), fit: BoxFit.cover) : null,
+          color: isSelected ? Color(0xFF3F51B5) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Color(0xFF3F51B5)),
         ),
-        child: file == null ? Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [Icon(Icons.camera_enhance, color: Colors.grey, size: 30), SizedBox(height: 8), Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))],
-        ) : Container(
-          alignment: Alignment.bottomRight, padding: EdgeInsets.all(8),
-          child: CircleAvatar(backgroundColor: Colors.green, radius: 12, child: Icon(Icons.check, size: 16, color: Colors.white)),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : Color(0xFF3F51B5)),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : Color(0xFF3F51B5))),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _uploadTile(String title, File? file, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(file == null ? Icons.upload_file : Icons.check_circle, color: file == null ? Colors.grey : Colors.green),
+      title: Text(title),
+      trailing: TextButton(onPressed: onTap, child: Text("Select")),
     );
   }
 }
