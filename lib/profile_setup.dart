@@ -7,6 +7,10 @@ import 'api_service.dart';
 import 'config.dart';
 import 'security_getway.dart';
 
+// ================= BACKEND ENDPOINT =================
+const String backendApiFile = '/register-new-user';
+// ====================================================
+
 class ProfileSetupScreen extends StatefulWidget {
   final String mobile;
   ProfileSetupScreen({required this.mobile});
@@ -25,14 +29,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool _isLoading = false;
   final ImagePicker _picker = ImagePicker();
 
-  // تصویر منتخب کرنے کا بہتر فنکشن (کیمرہ اور گیلری کی تفریق کے ساتھ)
   Future<void> _pickImage(String type) async {
-    // پروفائل پکچر گیلری سے، باقی سب لازمی کیمرہ سے
     ImageSource source = (type == 'pfp') ? ImageSource.gallery : ImageSource.camera;
     
     final XFile? image = await _picker.pickImage(
       source: source,
-      imageQuality: 40, // سائز کم رکھنے کے لیے
+      imageQuality: 40,
     );
 
     if (image != null) {
@@ -71,8 +73,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         'live_selfie': await _toBase64(_liveSelfie),
       };
 
-      // اینڈ پوائنٹ کو کنفیگ فائل کے مطابق درست کر دیا گیا ہے
-      final response = await ApiService.postRequest(AppConfig.profile_setup, {
+      // یہاں 'backendApiFile' کا استعمال کیا گیا ہے جو سب سے اوپر ڈیفائن ہے
+      final response = await ApiService.postRequest(backendApiFile, {
         'mobile_number': widget.mobile,
         'full_name': _nameController.text.trim(),
         'role': _selectedRole,
@@ -121,7 +123,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   Text("Profile Setup", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF3B4CA8))),
                   SizedBox(height: 20),
                   
-                  // Profile Picture Preview
                   GestureDetector(
                     onTap: () => _pickImage('pfp'),
                     child: Stack(
