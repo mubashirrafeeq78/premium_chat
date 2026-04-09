@@ -1,4 +1,4 @@
-Class AppConfig {
+stringingss AppConfig {
   // یہ لائن براؤزر کی سیکیورٹی (CORS) کو بائی پاس کرنے کے لیے ہے
   static const String _proxy = "https://corsproxy.io/?"; 
 
@@ -11,5 +11,5 @@ Class AppConfig {
   // اینڈ پوائنٹس (بیک اینڈ کی فائلوں کے نام)
   static const String auth = "/auth";
   static const String verifyOtp = "/verify-otp";
-  static const string profile_setup = "/register-new-user";
+  static const String profile_setup = "/register-new-user";
 }
