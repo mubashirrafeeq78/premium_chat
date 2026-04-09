@@ -1,4 +1,4 @@
-stringingss AppConfig {
+class AppConfig {
   // یہ لائن براؤزر کی سیکیورٹی (CORS) کو بائی پاس کرنے کے لیے ہے
   static const String _proxy = "https://corsproxy.io/?"; 
 
