@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-import 'api_service.dart';
-import 'config.dart';
+import 'config.dart'; // نئی کنفیگ فائل
 import 'security_getway.dart'; 
 import 'profile_setup.dart'; 
 
@@ -90,8 +89,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // یہاں تبدیلی کی گئی ہے: براہ راست اینڈ پوائنٹ کا نام استعمال کیا گیا ہے
-      final response = await ApiService.postRequest('/verify-otp', {
+      // --- نئی ترتیب کا استعمال ---
+      // اب یہاں براہ راست اینڈ پوائنٹ کے بجائے 'otp_verification' کی (Key) استعمال ہوگی
+      final response = await Config.send('otp_verification', {
         'mobile': widget.mobile,
         'otp': otp,
       });
