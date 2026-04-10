@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart'; // image_picker package lazmi add karein
-import 'api_service.dart';
+import 'package:image_picker/image_picker.dart'; 
+// ApiService کی جگہ اب Config استعمال ہوگا
+import 'config.dart';
 import 'security_getway.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -18,13 +19,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _nameController = TextEditingController();
   final _pinController = TextEditingController();
   
-  String _selectedRole = 'buyer'; // Default Role
+  String _selectedRole = 'buyer'; 
   File? _profilePic, _cnicFront, _cnicBack, _selfie;
   bool _isLoading = false;
 
   final ImagePicker _picker = ImagePicker();
 
-  // تصویر منتخب کرنے کا فنکشن
   Future<void> _pickImage(String type) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
     if (pickedFile != null) {
@@ -37,7 +37,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
-  // تصویر کو Base64 میں تبدیل کرنے کا فنکشن (بیک اینڈ کی ضرورت کے مطابق)
   String? _fileToBase64(File? file) {
     if (file == null) return null;
     List<int> imageBytes = file.readAsBytesSync();
@@ -45,7 +44,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Future<void> _registerUser() async {
-    // بنیادی ویلیڈیشن
     if (_nameController.text.isEmpty || _pinController.text.length < 4 || _profilePic == null) {
       _showSnack("Please fill basic info and select profile picture", true);
       return;
@@ -58,7 +56,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     setState(() => _isLoading = true);
 
-    // تصاویر کا ڈیٹا تیار کرنا
     Map<String, String?> imagesData = {
       "profile_pic": _fileToBase64(_profilePic),
       "cnic_front": _fileToBase64(_cnicFront),
@@ -67,7 +64,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     };
 
     try {
-      final response = await ApiService.postRequest('/register-new-user', {
+      // --- نئی ترتیب کا استعمال ---
+      // اب یہاں براہ راست اینڈ پوائنٹ کے بجائے 'profile_setup' کی (Key) استعمال ہوگی
+      final response = await Config.send('profile_setup', {
         "mobile_number": widget.mobile,
         "full_name": _nameController.text.trim(),
         "role": _selectedRole,
@@ -88,7 +87,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e) {
       _showSnack("Error: $e", true);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -99,6 +98,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     ));
   }
 
+  // باقی تمام UI ڈیزائن (جوں کا توں)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,7 +107,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
-            // پروفائل پکچر سیکشن
             GestureDetector(
               onTap: () => _pickImage('pfp'),
               child: CircleAvatar(
@@ -119,7 +118,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ),
             SizedBox(height: 20),
             
-            // ان پٹ فیلڈز
             _buildTextField(_nameController, "Full Name", Icons.person),
             SizedBox(height: 15),
             _buildTextField(_pinController, "Security PIN (4-Digits)", Icons.lock, isPin: true),
@@ -134,7 +132,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ],
             ),
 
-            // اگر رول پرووائیڈر ہو تو اضافی تصاویر
             if (_selectedRole == 'provider') ...[
               SizedBox(height: 25),
               Text("Identity Verification (Required for Providers)"),
