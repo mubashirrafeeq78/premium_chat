@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-import 'config.dart';
+import 'package:intl/intl.dart';
 
 class ChatGroupPage extends StatefulWidget {
   @override
@@ -10,56 +9,45 @@ class ChatGroupPage extends StatefulWidget {
 
 class _ChatGroupPageState extends State<ChatGroupPage> {
   final TextEditingController _msgController = TextEditingController();
-  List _messages = [];
-  String _myNumber = "";
   final ImagePicker _picker = ImagePicker();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUser();
-    // ہر 2 سیکنڈ بعد چیٹ اپڈیٹ کرنے کے لیے
-    Stream.periodic(Duration(seconds: 2)).listen((_) => _fetchMessages());
-  }
-
-  _loadUser() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() { _myNumber = prefs.getString('mobile_number') ?? "03000000000"; });
-  }
-
-  // میسج لوڈ کرنا
-  _fetchMessages() async {
-    var res = await Config.send("load_msg", {});
-    if (res != null && res['status'] == 'success') {
-      setState(() { _messages = res['data']; });
+  
+  // عارضی لسٹ (صرف ڈیزائن چیک کرنے کے لیے)
+  final List<Map<String, dynamic>> _dummyMessages = [
+    {
+      "type": "text",
+      "content": "السلام علیکم! یہ پریمیم ڈیزائن کیسا ہے؟",
+      "time": "11:30 AM",
+      "date": "13 April 2026",
+      "isMe": false
+    },
+    {
+      "type": "audio",
+      "content": "Voice Message",
+      "time": "11:32 AM",
+      "date": "13 April 2026",
+      "isMe": true
+    },
+    {
+      "type": "image",
+      "content": "https://paxochat.com/sample.jpg",
+      "time": "11:35 AM",
+      "date": "13 April 2026",
+      "isMe": true
     }
-  }
+  ];
 
-  // میسج بھیجنے کی لاجک
-  _send(String type, {String? content, String? url}) async {
-    if (type == 'text' && _msgController.text.isEmpty) return;
-    
-    var data = {
-      "mobile_number": _myNumber,
-      "content": content ?? _msgController.text,
-      "media_url": url ?? "",
-      "media_type": type
-    };
-
-    var res = await Config.send("save_msg", data);
-    if (res['status'] == 'success') {
+  // میسج ایڈ کرنے کا فنکشن (صرف ڈیزائن ٹیسٹ کے لیے)
+  void _addDummyMessage(String type, {String? content}) {
+    setState(() {
+      _dummyMessages.insert(0, {
+        "type": type,
+        "content": content ?? _msgController.text,
+        "time": DateFormat('hh:mm a').format(DateTime.now()),
+        "date": DateFormat('dd MMMM yyyy').format(DateTime.now()),
+        "isMe": true
+      });
       _msgController.clear();
-      _fetchMessages(); // فوری لوڈ کریں
-    }
-  }
-
-  // کیمرہ یا گیلری سے تصویر لینا
-  _pickMedia(ImageSource source) async {
-    final XFile? image = await _picker.pickImage(source: source);
-    if (image != null) {
-      // یہاں آپ کو فائل اپلوڈ کرنے کی ضرورت ہوگی، فی الحال ہم صرف لنک بھیج رہے ہیں
-      _send("image", url: "https://paxochat.com/uploads/${image.name}");
-    }
+    });
   }
 
   @override
@@ -67,24 +55,38 @@ class _ChatGroupPageState extends State<ChatGroupPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF075E54),
-        title: const Text("مسائل شرعیہ", style: TextStyle(color: Colors.white)),
-        actions: [const Icon(Icons.more_vert, color: Colors.white), const SizedBox(width: 10)],
+        title: Row(
+          children: [
+            CircleAvatar(backgroundColor: Colors.white24, child: Icon(Icons.person, color: Colors.white)),
+            SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("مسائل شرعیہ گروپ", style: TextStyle(color: Colors.white, fontSize: 16)),
+                Text("آن لائن", style: TextStyle(color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ],
+        ),
+        actions: [Icon(Icons.videocam, color: Colors.white), SizedBox(width: 15), Icon(Icons.call, color: Colors.white), Icon(Icons.more_vert, color: Colors.white)],
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFE5DDD5), // واٹس ایپ والا کلاسک رنگ
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png"),
+            fit: BoxFit.cover,
+            opacity: 0.08,
+          ),
+          color: Color(0xFFE5DDD5),
         ),
         child: Column(
           children: [
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.all(10),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  var m = _messages[index];
-                  bool isMe = m['mobile_number'] == _myNumber;
-                  return _buildBubble(m, isMe);
-                },
+                reverse: true,
+                padding: EdgeInsets.all(12),
+                itemCount: _dummyMessages.length,
+                itemBuilder: (context, index) => _buildMessageItem(_dummyMessages[index]),
               ),
             ),
             _buildInputBar(),
@@ -94,29 +96,43 @@ class _ChatGroupPageState extends State<ChatGroupPage> {
     );
   }
 
-  Widget _buildBubble(var m, bool isMe) {
+  Widget _buildMessageItem(Map<String, dynamic> msg) {
+    bool isMe = msg['isMe'];
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.all(10),
+        margin: EdgeInsets.symmetric(vertical: 5),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: isMe ? Color(0xFFDCF8C6) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(12),
+            topRight: Radius.circular(12),
+            bottomLeft: isMe ? Radius.circular(12) : Radius.circular(0),
+            bottomRight: isMe ? Radius.circular(0) : Radius.circular(12),
+          ),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 1)],
         ),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (m['media_type'] == 'text') Text(m['content']),
-            if (m['media_type'] == 'image') Image.network(m['media_url'], width: 200),
+            if (msg['type'] == 'text') Text(msg['content'], style: TextStyle(fontSize: 15)),
+            if (msg['type'] == 'image') ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network("https://via.placeholder.com/200")),
+            if (msg['type'] == 'audio') Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [Icon(Icons.play_arrow, color: Colors.grey), Container(width: 100, height: 2, color: Colors.grey[300]), Icon(Icons.mic, size: 16, color: Colors.blue)],
+            ),
+            S Weiss(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text("10:48", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                if (isMe) const SizedBox(width: 5),
-                if (isMe) const Icon(Icons.done_all, size: 15, color: Colors.blue), // نیلے ٹک
+                Text("${msg['date']} | ${msg['time']}", style: TextStyle(fontSize: 9, color: Colors.black45)),
+                if (isMe) SizedBox(width: 4),
+                if (isMe) Icon(Icons.done_all, size: 15, color: Colors.blue),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -125,39 +141,67 @@ class _ChatGroupPageState extends State<ChatGroupPage> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
               child: Row(
                 children: [
-                  const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
-                  const SizedBox(width: 5),
+                  IconButton(icon: Icon(Icons.emoji_emotions_outlined, color: Colors.grey[600]), onPressed: () {}),
                   Expanded(
                     child: TextField(
                       controller: _msgController,
                       onChanged: (v) => setState(() {}),
-                      decoration: const InputDecoration(hintText: "میسج لکھیں...", border: InputBorder.none),
+                      decoration: InputDecoration(hintText: "میسج لکھیں...", border: InputBorder.none),
                     ),
                   ),
-                  IconButton(icon: const Icon(Icons.attach_file, color: Colors.grey), onPressed: () => _pickMedia(ImageSource.gallery)),
-                  IconButton(icon: const Icon(Icons.camera_alt, color: Colors.grey), onPressed: () => _pickMedia(ImageSource.camera)),
+                  IconButton(icon: Icon(Icons.attach_file, color: Colors.grey[600]), onPressed: () => _showMediaPicker()),
+                  IconButton(icon: Icon(Icons.camera_alt, color: Colors.grey[600]), onPressed: () {}),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           GestureDetector(
-            onTap: () => _send("text"),
+            onTap: () {
+              if (_msgController.text.isNotEmpty) _addDummyMessage("text");
+            },
             child: CircleAvatar(
-              backgroundColor: const Color(0xFF075E54),
+              radius: 24,
+              backgroundColor: Color(0xFF075E54),
               child: Icon(_msgController.text.isEmpty ? Icons.mic : Icons.send, color: Colors.white),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showMediaPicker() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        height: 200,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _mediaIcon(Icons.image, "گیلری", Colors.purple, () => _addDummyMessage("image")),
+            _mediaIcon(Icons.camera_alt, "کیمرہ", Colors.red, () {}),
+            _mediaIcon(Icons.videocam, "ویڈیو", Colors.orange, () {}),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mediaIcon(IconData icon, String label, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: () { Navigator.pop(context); onTap(); },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [CircleAvatar(radius: 30, backgroundColor: color, child: Icon(icon, color: Colors.white)), Text(label)],
       ),
     );
   }
