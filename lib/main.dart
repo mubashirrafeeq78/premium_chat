@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'chat_group.dart'; // اس فائل میں آپ کا چیٹ اور لاک اسکرین کا کوڈ ہے
+import 'chat_group.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -14,13 +14,12 @@ class MyApp extends StatelessWidget {
       title: 'مسائل شرعیہ',
       debugShowCheckedModeBanner: false, 
       theme: ThemeData(
-        // واٹس ایپ جیسا پروفیشنل رنگ (Primary Green)
+        // واٹس ایپ جیسا پروفیشنل رنگ
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF075E54)),
         useMaterial3: true,
-        fontFamily: 'NotoNaskhArabic', // اگر آپ نے اردو فانٹ ایڈ کیا ہے
       ),
-      // اب ایپ کھلتے ہی سیدھا پن لاک اسکرین (ChatGroupPage) دکھائے گی
-      home: ChatGroupPage(), 
+      // یہاں کلاس کا نام ٹھیک کر دیا گیا ہے تاکہ chat_group.dart سے میچ کرے
+      home: ChatGroupScreen(), 
     );
   }
 }
