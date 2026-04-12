@@ -1,91 +1,89 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 
-class ChatGroupPage extends StatefulWidget {
+class ChatGroupScreen extends StatefulWidget {
   @override
-  _ChatGroupPageState createState() => _ChatGroupPageState();
+  _ChatGroupScreenState createState() => _ChatGroupScreenState();
 }
 
-class _ChatGroupPageState extends State<ChatGroupPage> {
-  final TextEditingController _msgController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
+class _ChatGroupScreenState extends State<ChatGroupScreen> {
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   
-  // عارضی لسٹ ڈیزائن ٹیسٹ کرنے کے لیے
-  final List<Map<String, dynamic>> _dummyMessages = [
+  bool _isRecording = false;
+  bool _isTyping = false;
+  Map<String, dynamic>? _replyingTo;
+  
+  // Dummy Data for Preview (As you said backend later)
+  List<Map<String, dynamic>> _messages = [
     {
+      "id": "1",
+      "user": "System",
+      "text": "خوش آمدید! آپ یہاں مسائل شرعیہ پوچھ سکتے ہیں۔",
+      "isMe": false,
       "type": "text",
-      "content": "السلام علیکم! یہ پریمیم ڈیزائن اب بالکل ٹھیک کام کرے گا۔",
-      "time": "12:10 PM",
-      "date": "13 April 2026",
-      "isMe": false
+      "time": "10:00 AM"
     },
-    {
-      "type": "audio",
-      "content": "Voice Message",
-      "time": "12:12 PM",
-      "date": "13 April 2026",
-      "isMe": true
-    }
   ];
 
-  void _addDummyMessage(String type, {String? content}) {
+  void _sendMessage() {
+    if (_messageController.text.trim().isEmpty) return;
+    
     setState(() {
-      _dummyMessages.insert(0, {
-        "type": type,
-        "content": content ?? _msgController.text,
-        "time": DateFormat('hh:mm a').format(DateTime.now()),
-        "date": DateFormat('dd MMMM yyyy').format(DateTime.now()),
-        "isMe": true
+      _messages.add({
+        "id": DateTime.now().toString(),
+        "user": "You",
+        "text": _messageController.text,
+        "isMe": true,
+        "type": "text",
+        "time": "${DateTime.now().hour}:${DateTime.now().minute}",
+        "replyTo": _replyingTo,
       });
-      _msgController.clear();
+      _messageController.clear();
+      _isTyping = false;
+      _replyingTo = null;
+    });
+    
+    Timer(Duration(milliseconds: 100), () {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF075E54),
-        title: Row(
-          children: [
-            const CircleAvatar(backgroundColor: Colors.white24, child: Icon(Icons.person, color: Colors.white)),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text("مسائل شرعیہ گروپ", style: TextStyle(color: Colors.white, fontSize: 16)),
-                Text("آن لائن", style: TextStyle(color: Colors.white70, fontSize: 11)),
-              ],
-            ),
-          ],
-        ),
-        actions: const [
-          Icon(Icons.videocam, color: Colors.white),
-          SizedBox(width: 15),
-          Icon(Icons.call, color: Colors.white),
-          Icon(Icons.more_vert, color: Colors.white)
-        ],
-      ),
+      backgroundColor: Color(0xFFF2F2F2),
       body: Container(
         decoration: BoxDecoration(
-          image: const DecorationImage(
-            image: NetworkImage("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png"),
-            fit: BoxFit.cover,
-            opacity: 0.08,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF5F5F5), Color(0xFFE0F7FA), Color(0xFFFFE0B2)],
           ),
-          color: const Color(0xFFE5DDD5),
         ),
         child: Column(
           children: [
+            SizedBox(height: 40), // Top padding like your header spacer
+            
+            // Chat Messages Area
             Expanded(
               child: ListView.builder(
-                reverse: true,
-                padding: const EdgeInsets.all(12),
-                itemCount: _dummyMessages.length,
-                itemBuilder: (context, index) => _buildMessageItem(_dummyMessages[index]),
+                controller: _scrollController,
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) => _buildMessageBubble(_messages[index]),
               ),
             ),
+
+            // Reply UI
+            if (_replyingTo != null) _buildReplyPreview(),
+
+            // Input Bar
             _buildInputBar(),
           ],
         ),
@@ -93,44 +91,46 @@ class _ChatGroupPageState extends State<ChatGroupPage> {
     );
   }
 
-  Widget _buildMessageItem(Map<String, dynamic> msg) {
+  Widget _buildMessageBubble(Map<String, dynamic> msg) {
     bool isMe = msg['isMe'];
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: EdgeInsets.symmetric(vertical: 5),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
-            bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
-          ),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 1)],
+          color: isMe ? Color(0xFFDCF8C6) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
         ),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+        padding: EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            if (msg['type'] == 'text') Text(msg['content'], style: const TextStyle(fontSize: 15)),
-            if (msg['type'] == 'audio') Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.play_arrow, color: Colors.grey),
-                Container(width: 100, height: 2, color: Colors.grey[300]),
-                const Icon(Icons.mic, size: 16, color: Colors.blue)
-              ],
-            ),
-            const SizedBox(height: 4), // یہاں اب کوئی ایرر نہیں آئے گا
+            Text(msg['user'], style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF075E54))),
+            if (msg['replyTo'] != null)
+              Container(
+                margin: EdgeInsets.only(top: 5, bottom: 5),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.05),
+                  border: Border(left: BorderSide(color: Color(0xFF075E54), width: 4)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(msg['replyTo']['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+              ),
+            SizedBox(height: 5),
+            Text(msg['text'], style: TextStyle(fontSize: 15, color: Colors.black87)),
+            SizedBox(height: 5),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("${msg['date']} | ${msg['time']}", style: const TextStyle(fontSize: 9, color: Colors.black45)),
-                if (isMe) const SizedBox(width: 4),
-                if (isMe) const Icon(Icons.done_all, size: 15, color: Colors.blue),
+                Text(msg['time'], style: TextStyle(fontSize: 10, color: Colors.grey)),
+                if (isMe) ...[
+                  SizedBox(width: 4),
+                  Icon(Icons.done_all, size: 16, color: Color(0xFF34B7F1)),
+                ]
               ],
             ),
           ],
@@ -139,43 +139,116 @@ class _ChatGroupPageState extends State<ChatGroupPage> {
     );
   }
 
+  Widget _buildReplyPreview() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      color: Color(0xFFE9E9E9),
+      child: Row(
+        children: [
+          Container(width: 4, height: 40, color: Color(0xFF075E54)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_replyingTo!['user'], style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF075E54), fontSize: 13)),
+                Text(_replyingTo!['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Colors.black54)),
+              ],
+            ),
+          ),
+          IconButton(icon: Icon(Icons.close, size: 20), onPressed: () => setState(() => _replyingTo = null)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: EdgeInsets.all(10),
+      color: Color(0xFFF0F0F0),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+              ),
               child: Row(
                 children: [
-                  IconButton(icon: Icon(Icons.emoji_emotions_outlined, color: Colors.grey[600]), onPressed: () {}),
+                  IconButton(icon: Icon(Icons.attach_file, color: Color(0xFF667781)), onPressed: _showMediaOptions),
                   Expanded(
                     child: TextField(
-                      controller: _msgController,
-                      onChanged: (v) => setState(() {}),
-                      decoration: const InputDecoration(hintText: "میسج لکھیں...", border: InputBorder.none),
+                      controller: _messageController,
+                      onChanged: (v) => setState(() => _isTyping = v.isNotEmpty),
+                      decoration: InputDecoration(
+                        hintText: _isRecording ? "Recording ● 00:00" : "Type a message...",
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(color: _isRecording ? Colors.red : Colors.grey),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                      ),
                     ),
                   ),
-                  IconButton(icon: Icon(Icons.attach_file, color: Colors.grey[600]), onPressed: () {}),
-                  IconButton(icon: Icon(Icons.camera_alt, color: Colors.grey[600]), onPressed: () {}),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: 8),
           GestureDetector(
-            onTap: () {
-              if (_msgController.text.isNotEmpty) _addDummyMessage("text");
+            onLongPress: () {
+              if (!_isTyping) setState(() => _isRecording = true);
             },
+            onLongPressUp: () {
+              if (_isRecording) {
+                setState(() => _isRecording = false);
+                // logic to send voice would go here
+              }
+            },
+            onTap: _isTyping ? _sendMessage : null,
             child: CircleAvatar(
-              radius: 24,
-              backgroundColor: const Color(0xFF075E54),
-              child: Icon(_msgController.text.isEmpty ? Icons.mic : Icons.send, color: Colors.white),
+              radius: 25,
+              backgroundColor: Color(0xFF25D366),
+              child: Icon(
+                _isTyping ? Icons.send : (_isRecording ? Icons.mic : Icons.mic),
+                color: Colors.white,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showMediaOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: GridView.count(
+          crossAxisCount: 3,
+          padding: EdgeInsets.all(20),
+          children: [
+            _mediaIcon(Icons.image, "Gallery", Colors.purple),
+            _mediaIcon(Icons.camera_alt, "Camera", Colors.red),
+            _mediaIcon(Icons.videocam, "Video", Colors.orange),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mediaIcon(IconData icon, String label, Color color) {
+    return Column(
+      children: [
+        CircleAvatar(radius: 30, backgroundColor: color, child: Icon(icon, color: Colors.white)),
+        SizedBox(height: 5),
+        Text(label, style: TextStyle(fontSize: 12)),
+      ],
     );
   }
 }
