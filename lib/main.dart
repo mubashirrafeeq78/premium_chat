@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'auth.dart'; // آپ کی رجسٹریشن اسکرین والی فائل
+import 'chat_group.dart'; // آپ کی رجسٹریشن اسکرین والی فائل
 
 void main() {
   runApp(const MyApp());
