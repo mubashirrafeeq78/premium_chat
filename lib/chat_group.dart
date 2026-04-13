@@ -1,141 +1,155 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
 
-void main() => runApp(const MaterialApp(home: ChatScreen(), debugShowCheckedModeBanner: false));
+void main() => runApp(const MaterialApp(home: PremiumChatScreen(), debugShowCheckedModeBanner: false));
 
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+class PremiumChatScreen extends StatefulWidget {
+  const PremiumChatScreen({super.key});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  _PremiumChatScreenState createState() => _PremiumChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _PremiumChatScreenState extends State<PremiumChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final List<Map<String, dynamic>> _messages = [];
+  final AudioRecorder _recorder = AudioRecorder();
+  final AudioPlayer _player = AudioPlayer();
+  final ImagePicker _picker = ImagePicker();
+  bool _isRecording = false;
+
+  void _sendMessage(String content, String type) {
+    if (content.trim().isEmpty && type == 'text') return;
+    setState(() {
+      _messages.add({
+        'content': content,
+        'type': type,
+        'isMe': true,
+        'time': '10:32 AM', // آپ یہاں dynamic وقت بھی ڈال سکتے ہیں
+      });
+    });
+    _controller.clear();
+  }
+
+  Future<void> _handleMedia(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source);
+    if (image != null) _sendMessage(image.path, 'image');
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      final path = await _recorder.stop();
+      if (path != null) _sendMessage(path, 'voice');
+      setState(() => _isRecording = false);
+    } else {
+      if (await _recorder.hasPermission()) {
+        final directory = Directory.systemTemp.path;
+        await _recorder.start(const RecordConfig(), path: '$directory/audio.m4a');
+        setState(() => _isRecording = true);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // بیک گراؤنڈ گریڈینٹ جو آپ کی امیج سے مماثل ہے
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF3F7F9),
-              Color(0xFFE6F3F5),
-              Color(0xFFFDF1E1),
-            ],
+            colors: [Color(0xFFF3F7F9), Color(0xFFE6F3F5), Color(0xFFFDF1E1)],
           ),
         ),
         child: Column(
           children: [
-            // میسجز کی لسٹ
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(10, 60, 10, 10),
-                children: [
-                  _buildMessage("السلام علیکم، کیا حال ہے؟", "10:30 AM", true, type: "text"),
-                  _buildMessage("وعلیکم السلام، میں بالکل ٹھیک ہوں۔ تم سناؤ؟", "10:30 AM", false, type: "text"),
-                  _buildMessage("یہ سنیں، کل والا کام", "10:32 AM", true, type: "voice"),
-                  _buildMessage("یہ یاد ہے؟", "10:30 AM", false, type: "image"),
-                  _buildMessage("بالکل یاد ہے! بہت زبردست تصویر ہے!", "10:32 AM", true, type: "text"),
-                ],
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(10, 60, 10, 20),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) => _buildMessageItem(_messages[index]),
               ),
             ),
-            // نیچے والا ان پٹ بار
-            _buildInputArea(),
+            _buildInputBar(),
           ],
         ),
       ),
     );
   }
 
-  // میسج ببل بنانے کا فنکشن
-  Widget _buildMessage(String content, String time, bool isMe, {required String type}) {
+  Widget _buildMessageItem(Map<String, dynamic> msg) {
+    bool isMe = msg['isMe'];
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: type == "image" ? const EdgeInsets.all(4) : const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isMe ? const Color(0xFFE1FFC7) : Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(12),
-                topRight: const Radius.circular(12),
-                bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
-                bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(15),
+            topRight: const Radius.circular(15),
+            bottomLeft: isMe ? const Radius.circular(15) : Radius.zero,
+            bottomRight: isMe ? Radius.zero : const Radius.circular(15),
+          ),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1))],
+        ),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (msg['type'] == 'text')
+              Text(msg['content'], style: const TextStyle(fontSize: 16)),
+            if (msg['type'] == 'image')
+              ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.file(File(msg['content']))),
+            if (msg['type'] == 'voice')
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.play_arrow, color: Colors.blue),
+                    onPressed: () => _player.play(DeviceFileSource(msg['content'])),
+                  ),
+                  const Text("Voice Message 0:12"),
+                ],
               ),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1))],
-            ),
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                if (type == "image")
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      'https://picsum.photos/400/300', // یہاں اپنی امیج کا لنک یا فائل پاتھ دیں
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                if (type == "voice")
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.play_arrow, color: Color(0xFF4FA9E2), size: 30),
-                      Image.asset('assets/wave.png', width: 100, errorBuilder: (c, e, s) => const Icon(Icons.linear_scale, color: Colors.grey)),
-                      const Text("0:12", style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 5, left: 5),
-                  child: Text(
-                    content,
-                    textDirection: TextDirection.rtl,
-                    style: const TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                    if (isMe) const SizedBox(width: 4),
-                    if (isMe) const Icon(Icons.done_all, size: 14, color: Color(0xFF4FA9E2)),
-                  ],
-                ),
+                Text(msg['time'], style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                const SizedBox(width: 4),
+                if (isMe) const Icon(Icons.done_all, size: 15, color: Colors.blue),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // نچلا حصہ (Type a message)
-  Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+  Widget _buildInputBar() {
+    return Padding(
+      padding: const EdgeInsets.all(10),
       child: Row(
         children: [
           Expanded(
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
               ),
               child: Row(
                 children: [
-                  IconButton(onPressed: () {}, icon: const Icon(Icons.attach_file, color: Colors.grey)),
-                  const Expanded(
+                  IconButton(icon: const Icon(Icons.attach_file, color: Colors.grey), onPressed: () => _handleMedia(ImageSource.gallery)),
+                  Expanded(
                     child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "Type a message...",
-                        border: InputBorder.none,
-                      ),
+                      controller: _controller,
+                      decoration: const InputDecoration(hintText: "Type a message...", border: InputBorder.none),
                     ),
                   ),
                 ],
@@ -143,10 +157,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          const CircleAvatar(
-            backgroundColor: Color(0xFF25D366),
-            radius: 25,
-            child: Icon(Icons.mic, color: Colors.white),
+          GestureDetector(
+            onLongPress: _toggleRecording,
+            onLongPressUp: _toggleRecording,
+            onTap: () => _sendMessage(_controller.text, 'text'),
+            child: CircleAvatar(
+              radius: 25,
+              backgroundColor: const Color(0xFF25D366),
+              child: Icon(_controller.text.isNotEmpty ? Icons.send : Icons.mic, color: Colors.white),
+            ),
           ),
         ],
       ),
