@@ -1,5 +1,5 @@
 name: premium_chat
-description: "A new Flutter project."
+description: "A professional consultation chat application."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -11,22 +11,25 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # انٹرنیٹ اور بیک اینڈ سے بات کرنے کے لیے
+  # انٹرنیٹ اور بیک اینڈ API کے لیے
   http: ^1.2.1
   
-  # تصاویر اور ویڈیوز منتخب کرنے کے لیے (میڈیا سینڈنگ کے لیے لازمی)
+  # تصاویر اور کیمرہ کے لیے (Auto-send logic کے لیے)
   image_picker: ^1.1.0
   
-  # ڈیٹا لوکل اسٹوریج میں محفوظ کرنے کے لیے (User ID اور Cache کے لیے)
+  # ویڈیو پلے کرنے کے لیے (تاکہ برانڈڈ ایپ کی طرح ویڈیو چلے)
+  video_player: ^2.8.6
+  
+  # لوکل اسٹوریج (Settings اور UserID کے لیے)
   shared_preferences: ^2.2.3
 
-  # تاریخ اور وقت کی فارمیٹنگ کے لیے
+  # تاریخ اور وقت کے لیے
   intl: ^0.19.0
 
-  # وائس ریکارڈنگ کے لیے (Chat Group ڈیزائن کے لیے ضروری)
+  # اصلی وائس ریکارڈنگ کے لیے (Long Press functionality)
   record: ^5.1.0
   
-  # ریکارڈ شدہ آواز پلے کرنے کے لیے
+  # آواز پلے کرنے کے لیے (Professional UI)
   audioplayers: ^5.2.1
 
   cupertino_icons: ^1.0.6
@@ -38,3 +41,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # اگر آپ نے مستقبل میں کوئی اپنی تصاویر یا فانٹ لگانے ہوں تو یہاں ایڈ ہوں گے
