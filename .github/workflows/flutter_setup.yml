@@ -1,4 +1,4 @@
-name: Setup NoorApp Flutter WebView
+name: Setup NoorApp Flutter WebView (Ultra Clean)
 
 on:
   push:
@@ -8,9 +8,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      # 2. Setup Flutter (Fixed Version)
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
@@ -18,15 +20,26 @@ jobs:
           channel: stable
           cache: true
 
+      # 3. Disable Analytics (no popup)
+      - name: Disable Flutter Analytics
+        run: flutter config --no-analytics
+
+      # 4. Clean Old Files (important 🔥)
+      - name: Clean Project Folder
+        run: |
+          rm -rf android ios lib test web linux macos windows pubspec.* .metadata
+
+      # 5. Create Fresh Flutter Project (SAFE NAME)
       - name: Create Flutter Project
         run: |
-          flutter create . --org com.noorapp.noorapp --overwrite
+          flutter create . --project-name noorapp --org com.noorapp.app
 
-      - name: Install Dependencies
-        run: |
-          flutter pub add webview_flutter
+      # 6. Add Dependency
+      - name: Install WebView
+        run: flutter pub add webview_flutter
 
-      - name: Create WebView App Code
+      # 7. Replace Main.dart
+      - name: Setup WebView Code
         run: |
           cat > lib/main.dart << 'EOF'
           import 'package:flutter/material.dart';
@@ -80,23 +93,26 @@ jobs:
           }
           EOF
 
+      # 8. Add Permissions (SAFE INSERT)
       - name: Add Android Permissions
         run: |
-          sed -i '/<manifest>/a \
+          sed -i '/<manifest/a\
           <uses-permission android:name="android.permission.INTERNET"/>\
           <uses-permission android:name="android.permission.CAMERA"/>\
           <uses-permission android:name="android.permission.RECORD_AUDIO"/>\
           <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
-          <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\
-          ' android/app/src/main/AndroidManifest.xml
+          <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' \
+          android/app/src/main/AndroidManifest.xml
 
-      - name: Get Packages
+      # 9. Get Packages
+      - name: Flutter Pub Get
         run: flutter pub get
 
-      - name: Commit & Push Changes
+      # 10. Commit
+      - name: Commit & Push
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           git add .
-          git commit -m "Fix: Flutter WebView setup NoorApp"
-          git push || echo "No changes to commit"
+          git commit -m "Ultra clean NoorApp setup" || echo "Nothing to commit"
+          git push
