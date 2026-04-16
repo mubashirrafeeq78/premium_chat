@@ -1,4 +1,4 @@
-name: Deploy Flutter Web
+name: Build Flutter APK
 
 on:
   push:
@@ -6,8 +6,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -25,11 +23,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Web
-        run: flutter build web
+      - name: Build Release APK (small size)
+        run: flutter build apk --release --split-per-abi
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: build/web
+          name: release-apk
+          path: build/app/outputs/flutter-apk/*.apk
