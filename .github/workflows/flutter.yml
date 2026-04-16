@@ -1,23 +1,32 @@
-name: Build NoorApp APK
+name: NoorApp Build APK
 
 on:
 push:
-branches: [ "main" ]
+branches:
+- main
 
 jobs:
 build:
 runs-on: ubuntu-latest
 
 steps:
-  - name: Install Flutter
+  - name: Checkout Repo
+    uses: actions/checkout@v4
+
+  - name: Setup Flutter
     uses: subosito/flutter-action@v2
     with:
-      flutter-version: '3.19.0'
+      flutter-version: 3.19.0
 
-  - name: Create Flutter Project
+  - name: Create Project
     run: flutter create noor_app
 
-  - name: Replace Main Code
+  - name: Add Dependencies
+    run: |
+      echo "  webview_flutter: ^4.4.2" >> noor_app/pubspec.yaml
+      echo "  permission_handler: ^11.3.0" >> noor_app/pubspec.yaml
+
+  - name: Replace Main.dart
     run: |
       cat > noor_app/lib/main.dart << 'EOF'
       import 'package:flutter/material.dart';
@@ -35,20 +44,19 @@ steps:
         Widget build(BuildContext context) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            title: 'NoorApp',
-            home: const WebViewScreen(),
+            home: const WebPage(),
           );
         }
       }
 
-      class WebViewScreen extends StatefulWidget {
-        const WebViewScreen({super.key});
+      class WebPage extends StatefulWidget {
+        const WebPage({super.key});
 
         @override
-        State<WebViewScreen> createState() => _WebViewScreenState();
+        State<WebPage> createState() => _WebPageState();
       }
 
-      class _WebViewScreenState extends State<WebViewScreen> {
+      class _WebPageState extends State<WebPage> {
         late final WebViewController controller;
 
         @override
@@ -67,7 +75,7 @@ steps:
           await [
             Permission.microphone,
             Permission.camera,
-            Permission.storage,
+            Permission.storage
           ].request();
         }
 
@@ -82,13 +90,14 @@ steps:
       }
       EOF
 
-  - name: Add Dependencies
-    run: |
-      sed -i '/dependencies:/a\  webview_flutter: ^4.4.2\n  permission_handler: ^11.3.0' noor_app/pubspec.yaml
-
   - name: Add Android Permissions
     run: |
-      sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' noor_app/android/app/src/main/AndroidManifest.xml
+      sed -i '/<manifest/a\
+          <uses-permission android:name="android.permission.INTERNET"/>\
+          <uses-permission android:name="android.permission.RECORD_AUDIO"/>\
+          <uses-permission android:name="android.permission.CAMERA"/>\
+          <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\
+          <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>' noor_app/android/app/src/main/AndroidManifest.xml
 
   - name: Build APK
     run: |
@@ -99,5 +108,5 @@ steps:
   - name: Upload APK
     uses: actions/upload-artifact@v4
     with:
-      name: NoorApp APK
+      name: NoorApp
       path: noor_app/build/app/outputs/flutter-apk/app-release.apk
