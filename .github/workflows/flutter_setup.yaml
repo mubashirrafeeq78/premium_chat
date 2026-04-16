@@ -14,28 +14,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
-      - name: Setup Flutter
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "stable"
+          channel: stable
+          flutter-version: "3.19.6"
 
-      - name: Create Flutter WebView Project (NoorApp)
+      - name: Create Flutter Project
         run: flutter create NoorApp --overwrite --org com.noorapp
 
-      - name: Configure Git
+      - name: Git setup
         run: |
-          cd NoorApp
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
 
       - name: Commit changes
         run: |
-          cd NoorApp
           git add .
-          git diff --cached --quiet || git commit -m "Auto: NoorApp Flutter WebView base setup"
+          git diff --cached --quiet || git commit -m "Auto: NoorApp setup"
 
       - name: Push changes
         run: |
