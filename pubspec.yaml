@@ -1,5 +1,5 @@
-name: premium_chat
-description: "A new Flutter project."
+name: NoorApp
+description: "A premium webview application."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -12,8 +12,10 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  # Webview package added for web functionality
-  webview_flutter: ^4.10.0
+  # Version 4.8.0 is used to maintain compatibility with your current SDK 3.4.0
+  webview_flutter: ^4.8.0
+  webview_flutter_android: ^3.16.0
+  webview_flutter_wkwebview: ^3.13.0
 
 dev_dependencies:
   flutter_test:
