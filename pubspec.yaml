@@ -5,19 +5,20 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.4.0 <4.0.0'
+  # یہاں ہم نے ورژن 3.5.0 کر دیا ہے تاکہ لیٹسٹ لائبریریز سپورٹ ہوں
+  sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  # Webview packages updated to latest versions
+  # یہ لیٹسٹ ورژنز ہیں جو کیمرہ اور مائیکروفون کے لیے بہترین ہیں
   webview_flutter: ^4.10.0
   webview_flutter_android: ^4.0.0
   webview_flutter_wkwebview: ^3.15.0
   
-  # Permission handler
+  # پرمیشن ہینڈلر
   permission_handler: ^11.3.1
 
 dev_dependencies:
