@@ -1,4 +1,4 @@
-Name: Build Flutter APK
+name: Build Flutter APK
 
 on:
   push:
@@ -13,12 +13,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 # v3 سے v4 پر اپ ڈیٹ کر دیا گیا ہے
+        uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.0" # یہ ورژن بالکل صحیح ہے
+          flutter-version: "3.22.0"
           channel: 'stable'
 
       - name: Install dependencies
