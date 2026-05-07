@@ -3,6 +3,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,22 +17,17 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Enable Web and Build
+      - name: Fresh Build
         run: |
-          # 1. ویب سپورٹ کو فعال کرنا
+          # 1. ویب سپورٹ فعال کرنا
           flutter config --enable-web
           
-          # 2. پیکجز حاصل کرنا
+          # 2. پیکجز کلین اور گیٹ کرنا
           flutter pub get
           
-          # 3. ویب بلڈ بنانا (CanvasKit یا HTML رینڈرر کے ساتھ)
-          flutter build web --release --base-href "/${{ github.event.repository.name }}/"
-
-      - name: Upload Web Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-build
-          path: build/web
+          # 3. ویب بلڈ بنانا (HTML رینڈرر کے ساتھ تاکہ وائٹ اسکرین نہ آئے)
+          # نوٹ: --base-href کا صحیح ہونا ضروری ہے
+          flutter build web --release --web-renderer html --base-href "/${{ github.event.repository.name }}/"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
