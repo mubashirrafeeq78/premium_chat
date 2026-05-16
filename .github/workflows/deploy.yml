@@ -1,36 +1,44 @@
-name: Flutter Web Build and Deploy
+name: Ultimate Auto-Fix and Build
 on:
   push:
     branches: [ main ]
-
-permissions:
-  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      
+      - name: Setup Java and Flutter
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: Fresh Build
+      - name: Fresh Rebuild and Package Fix
         run: |
-          # 1. ویب سپورٹ فعال کرنا
-          flutter config --enable-web
+          # 1. پرانا کچرا صاف کرنا
+          rm -rf android
           
-          # 2. پیکجز کلین اور گیٹ کرنا
+          # 2. نیا لیٹسٹ پروجیکٹ بنانا
+          flutter create . --platforms android
+          
+          # 3. خودکار طریقے سے فائل ڈھونڈ کر پیکج نیم بدلنا (چاہے نام .gradle ہو یا .kts)
+          find android -name "build.gradle*" -exec sed -i 's/com.example.premium_chat/com.quick.designapp/g' {} +
+          find android -name "MainActivity.kt" -exec sed -i 's/com.example.premium_chat/com.quick.designapp/g' {} +
+          
+          # 4. ورژنز کی مطابقت درست کرنا
           flutter pub get
-          
-          # 3. ویب بلڈ بنانا (HTML رینڈرر کے ساتھ تاکہ وائٹ اسکرین نہ آئے)
-          # نوٹ: --base-href کا صحیح ہونا ضروری ہے
-          flutter build web --release --web-renderer html --base-href "/${{ github.event.repository.name }}/"
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Build APK
+        run: |
+          flutter build apk --release --target-platform android-arm64 --split-per-abi --android-skip-build-dependency-validation
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
+          name: Final-Success-Build
+          path: build/app/outputs/flutter-apk/*.apk
